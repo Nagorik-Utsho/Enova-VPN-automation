@@ -1,4 +1,6 @@
 import re
+from logging import exception
+
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.common import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
@@ -31,7 +33,7 @@ def setup_driver():
 
 #New scrolling mechanism
 def scroll_and_click_in_scrollview(driver, element_text, scrollview_xpath="//android.widget.ScrollView",
-                                   max_scrolls_per_direction=5, max_cycles=5):
+                                   max_scrolls_per_direction=10, max_cycles=10):
     """
     Scrolls inside a ScrollView container to find an element by accessibility id (content-desc) and clicks it.
     Strategy:
@@ -161,7 +163,7 @@ def connect_disconnect_server(driver, server_name):
     #Opening the country drop down
     try :
         # 🔽 Expand all available countries (first pass)
-        countries = ["Netherlands", "Singapore", "Germany"]
+        countries = ["India","USA","Netherlands", "Singapore", "Germany","Canada","Sweden"]
         for country in countries:
             # print(f"🔍 Looking for {country}...")
             if not scroll_and_click_in_scrollview(driver, country):
@@ -181,6 +183,27 @@ def connect_disconnect_server(driver, server_name):
         print(f"{server_name} not found")
 
 
+    #select the security layer
+    vless_xpath= f'//android.view.View[contains(@content-desc,"VLess")'
+    smart_xpath=f'//android.view.View[contains(@content-desc,"Smart")]'
+    wait=WebDriverWait(driver,5)
+    try:
+            print("Selecting the security layer")
+            select_vless=wait.until(EC.presence_of_element_located(
+                (By.XPATH,vless_xpath)
+            ))
+            select_vless.click()
+    except Exception as e :
+            try:
+                select_Smart=wait.until(EC.presence_of_element_located(
+                    (By.XPATH,smart_xpath)
+                ))
+                select_Smart.click()
+            except Exception as e :
+                print("Failed to select the Smart server")
+
+
+
     #Connectin with the selected server
     try :
         #Connect the server
@@ -189,7 +212,7 @@ def connect_disconnect_server(driver, server_name):
             By.XPATH, '//android.view.View[contains(@content-desc, "Disconnected")]/android.widget.ImageView[3]'
         )))
         connect_button.click()
-        time.sleep(.3)
+        time.sleep(3)
     except Exception as e :
         print ("Failed to connect with the server")
 
@@ -467,10 +490,15 @@ def close_connection_report_popup(driver,value):
 
 def server_check(driver):
     print("##### Server Status Check #######")
-    servers = [#"India - 3","Netherlands - 1","Netherlands - 3","Brazil","Singapore","Singapore - 1",
+    servers = ["India - 2","India - 4","India - Premium","India - Ultimate",
+               "USA - 3","USA - 4","USA - Premium","USA - Ultimate","USA - Super",
+               "France - 3","Netherlands - 2","Netherlands - 3","Brazil","Singapore",
+               "Singapore - 1","Singapore - Premium","Germany - 1","Germany - 3",
+               "Germany -6","Germany - Premium","Germany - Special","Germany - Warrior",
+               "Bangladesh","Italy - Premium","Spain","Japan","Indonesia","Canada","Canada - 2",
+               "Poland","United Kingdom","South Korea","Sweden - 2","Sweden - 3","Denmark - Warrior",
+               ]
 
-               #"Germany - 1","Germany - 6","Germany Warrior","Canada","Poland",
-               "United Kingdom","Sweden - 3"]
 
     for server in servers:
         driver.execute_script("mobile: shell", {
