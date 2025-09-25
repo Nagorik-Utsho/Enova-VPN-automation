@@ -113,11 +113,11 @@ def homepage_info(driver):
                     ip_address = lines[2].strip()
                     downloaded = lines[4].strip()
                     uploaded = lines[6].strip()
-                    print(f"Server Name: {server_name}")
-                    print(f"IP Address: {ip_address}")
-                    print(f"Downloaded: {downloaded}")
-                    print(f"Uploaded: {uploaded}")
-                    print("---")  # Separator for clarity
+                    #print(f"Server Name: {server_name}")
+                    #print(f"IP Address: {ip_address}")
+                    #print(f"Downloaded: {downloaded}")
+                    #print(f"Uploaded: {uploaded}")
+                    #print("---")  # Separator for clarity
                     break  # Stop after finding the first valid element
 
         # Log the values being returned
@@ -135,42 +135,60 @@ def homepage_info(driver):
     print(f"Returning default: Server_name={server_name}, ip_address={ip_address}")
     return {"Server_name": server_name, "ip_address": ip_address}
 
+# Go to the Server list
+def serverlist(driver):
+    #print("Now in the server list")
+    try:
+        wait = WebDriverWait(driver, 60)
+        # Find and click on the server list element
+        server = wait.until(
+            EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, "Auto")]'))
+        )
+        server.click()
+        time.sleep(2)
+        return
+
+    except Exception as e:
+        print("The server list is not found:", e)
 
 
 def connect_disconnect_server(driver, server_name):
-    # """ Connect to VPN server and run optimization """
-    # driver.execute_script("mobile: shell", {
-    #     "command": "am start -n com.enovavpn.mobile/com.enovavpn.mobile.MainActivity"
-    # })
-    # time.sleep(10)
+    """ Connect to VPN server and run optimization """
+    driver.execute_script("mobile: shell", {
+        "command": "am start -n com.enovavpn.mobile/com.enovavpn.mobile.MainActivity"
+    })
+    time.sleep(3)
 
     print(f"\n🚀 Attempting to connect to {server_name}...")
     wait = WebDriverWait(driver, 10)
+    # Open server
+    serverlist(driver)
 
-    try:
-        # Open server list
-        server = wait.until(EC.presence_of_element_located((
-            By.XPATH, '//android.view.View[contains(@content-desc, "Auto")]'
-        )))
-        server.click()
-        time.sleep(2)
-
+    #Opening the country drop down
+    try :
         # 🔽 Expand all available countries (first pass)
-        countries = [ "Netherlands", "Singapore", "Germany"]
+        countries = ["Netherlands", "Singapore", "Germany"]
         for country in countries:
-           # print(f"🔍 Looking for {country}...")
+            # print(f"🔍 Looking for {country}...")
             if not scroll_and_click_in_scrollview(driver, country):
                 print(f"❌ Country '{country}' not found in list.")
                 return
+    except Exception as e :
+        print("ALL the drop_down are opened")
 
 
-            # 🎯 Now select the target server (second pass)
-        print(f"🔎 Searching for target server: {server_name}...")
+   #Selecting the server name
+    try :
+        # print(f"🔎 Searching for target server: {server_name}...")
         if not scroll_and_click_in_scrollview(driver, server_name):
             print(f"❌ Target server '{server_name}' not found, skipping connection.")
             return
+    except Exception as e :
+        print(f"{server_name} not found")
 
 
+    #Connectin with the selected server
+    try :
         #Connect the server
         # Click Connect
         connect_button = wait.until(EC.element_to_be_clickable((
@@ -178,6 +196,13 @@ def connect_disconnect_server(driver, server_name):
         )))
         connect_button.click()
         time.sleep(.3)
+    except Exception as e :
+        print ("Failed to connect with the server")
+
+
+
+    try:
+
         # try:
         #     homepage_info(driver)
         # except Exception as e:
@@ -220,7 +245,7 @@ def connect_disconnect_server(driver, server_name):
                     switch_back_enova(driver)
                     #print("Time to Disconnect the optimized server")
                     disconnect_server(driver)
-                    close_connection_reprot_popup(driver)
+                    close_connection_report_popup(driver,"from optimized server")
                     return
 
                 attempt += 1
@@ -243,8 +268,8 @@ def validate_ip(driver):
         print("❌ Failed to retrieve server name or IP address from VPN app")
         return
 
-    print(f"Server name: {server_name}")
-    print(f"Server IP: {ip_address}")
+    # print(f"Server name: {server_name}")
+    # print(f"Server IP: {ip_address}")
 
     external_ip = get_ip_from_app(driver)
     try:
@@ -294,7 +319,7 @@ def get_ip_from_app(driver):
 
     finally:
         driver.execute_script("mobile: shell", {"command": "input keyevent KEYCODE_HOME"})
-        print("📱 Returned to home screen.")
+        #print("📱 Returned to home screen.")
 
 #Switch back to Enova vpn application
 
@@ -321,7 +346,7 @@ def disconnect_server(driver):
         time.sleep(3)
         #print(f"🔌 {server_name} disconnected successfully.")
        # print("Disconnected successfully")
-        connection_report(driver)
+        #connection_report(driver)
         return
     except Exception as e:
        # print(f"❌ {server_name} - Disconnection failed: {e}")
@@ -330,38 +355,40 @@ def disconnect_server(driver):
 
 
 
-def connection_report(driver) :
-    wait=WebDriverWait(driver,5)
-    # Define labels
-    labels = [
-        "Server Name",
-        "IP Name",
-        "Connection Duration",
-        "Upload Time",
-        "Download Time"
-    ]
-
-    print("------ Connection Info ------")
-
-    try:
-        # Get all android.view.View elements with content-desc
-        all_elements = wait.until(EC.presence_of_all_elements_located(
-            (By.XPATH, '//android.view.View[@content-desc]')
-        ))
-
-        # Skip first two irrelevant elements
-        relevant_elements = all_elements[2:]  # Starts from 3rd element
-
-        for i, label in enumerate(labels):
-            value = relevant_elements[i].get_attribute("content-desc") if i < len(relevant_elements) else "None"
-            print(f"{label}: {value}")
-
-    except Exception:
-        # If elements not found
-        for label in labels:
-            print(f"{label}: None")
-
-    return
+# def connection_report(driver,server_name) :
+#     wait=WebDriverWait(driver,5)
+#     # Define labels
+#     labels = [
+#         "Server Name",
+#         "IP Name",
+#         "Connection Duration",
+#         "Upload Time",
+#         "Download Time"
+#     ]
+#
+#     print("------ Connection Info ------")
+#
+#     try:
+#         print(f"Disconnection pop up is present for{server_name}")
+#         # Get all android.view.View elements with content-desc
+#         all_elements = wait.until(EC.presence_of_all_elements_located(
+#             (By.XPATH, '//android.view.View[@content-desc]')
+#         ))
+#
+#         # Skip first two irrelevant elements
+#         relevant_elements = all_elements[2:]  # Starts from 3rd element
+#
+#         for i, label in enumerate(labels):
+#             value = relevant_elements[i].get_attribute("content-desc") if i < len(relevant_elements) else "None"
+#             print(f"{label}: {value}")
+#
+#     except Exception:
+#          print(f"Disconnection pop up is not present for {server_name}")
+#         # If elements not found
+#         for label in labels:
+#             print(f"{label}: None")
+#
+#     return
 
 #From the home page after connection collects the server name , ip and other information
 def homepage_info(driver):
@@ -421,33 +448,35 @@ def server_optimization(driver):
         print("No server name found")
 
 
-    close_connection_reprot_popup(driver)
-
-
+    close_connection_report_popup(driver,"not optimed")
     return server_name
 
 
 
 
 
-def close_connection_reprot_popup(driver):
+def close_connection_report_popup(driver,value):
+    print(value)
     wait=WebDriverWait(driver,5)
     try:
+
         get_popup = wait.until(EC.presence_of_element_located((
             By.XPATH, '//android.widget.ImageView[1]'
         )))
         get_popup.click()
-        print("✅ Popup closed successfully.")
+        #print("✅ Popup closed successfully.")
     except Exception as e:
-        print("⚠️ Failed to close popup:", e)
+        print("⚠️ Failed to close popup")
 
     return
 
 
 def server_check(driver):
     print("##### Server Status Check #######")
-    servers = ["India - 3","USA - 6","Netherlands - 1","Netherlands - 3","Brazil","Singapore","Singapore - 1",
-               "Germany - 1","Germany - 6","Germany Warrior","Canada","Poland","United Kingdom","Sweden - 3"]
+    servers = [#"India - 3","Netherlands - 1","Netherlands - 3","Brazil","Singapore","Singapore - 1",
+
+               #"Germany - 1","Germany - 6","Germany Warrior","Canada","Poland",
+               "United Kingdom","Sweden - 3"]
 
     for server in servers:
         driver.execute_script("mobile: shell", {
@@ -455,7 +484,7 @@ def server_check(driver):
         })
         time.sleep(0.5)
         connect_disconnect_server(driver, server)
-        print("now go for sleeping mode")
+        #print("now go for sleeping mode")
 
 
 
