@@ -9,6 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
+from server_switch_test import homepage_info
+
 
 def setup_driver():
 
@@ -46,7 +48,7 @@ def scroll_and_click_in_scrollview(driver, element_text, scrollview_xpath="//and
 
     try:
         # Wait up to 120 seconds for the scrollable container
-        wait = WebDriverWait(driver, 120)
+        wait = WebDriverWait(driver, 5)
         scrollable = wait.until(EC.presence_of_element_located((AppiumBy.XPATH, scrollview_xpath)))
     except TimeoutException:
         print("❌ ScrollView container not found within 120 seconds.")
@@ -70,7 +72,7 @@ def scroll_and_click_in_scrollview(driver, element_text, scrollview_xpath="//and
                             f'.//*[contains(@content-desc, "{element_text}")]'
                         )
                         element.click()
-                        print(f"✅ Found and clicked element: {element_text}")
+                        #print(f"✅ Found and clicked element: {element_text}")
                         return True
                     except NoSuchElementException:
                        # print(f"➡️ Scrolling {direction} (attempt {attempt + 1}/{max_scrolls_per_direction})")
@@ -89,7 +91,49 @@ def scroll_and_click_in_scrollview(driver, element_text, scrollview_xpath="//and
     return False
 
 
+#From the home page after connection collects the server name , ip and other information
+def homepage_info(driver):
+    """Extract server name, IP, and data usage from the homepage after VPN connection."""
+    wait = WebDriverWait(driver, 5)
+    server_name = ''
+    ip_address = ''
+    try:
+        # Locate all elements with 'Connected' in content-desc
+        get_serverinfo = wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, '//android.view.View[contains(@content-desc,"Connected")]')
+        ))
 
+        # Process elements to find the first valid one
+        for elem in get_serverinfo:
+            content_desc = elem.get_attribute("content-desc")
+            if content_desc:
+                lines = content_desc.split("\n")
+                if len(lines) >= 7:
+                    server_name = lines[1].strip()  # Clean up any extra whitespace
+                    ip_address = lines[2].strip()
+                    downloaded = lines[4].strip()
+                    uploaded = lines[6].strip()
+                    print(f"Server Name: {server_name}")
+                    print(f"IP Address: {ip_address}")
+                    print(f"Downloaded: {downloaded}")
+                    print(f"Uploaded: {uploaded}")
+                    print("---")  # Separator for clarity
+                    break  # Stop after finding the first valid element
+
+        # Log the values being returned
+        print(f"Returning: Server_name={server_name}, ip_address={ip_address}")
+        return {"Server_name": server_name, "ip_address": ip_address}
+
+    except TimeoutException:
+        print("❌ Timeout: No elements with 'Connected' found within 30 seconds")
+    except NoSuchElementException:
+        print("❌ No elements with 'Connected' found")
+    except Exception as e:
+        print(f"❌ Failed to gather information from the home page: {e}")
+
+    # Always return a dictionary, even on failure
+    print(f"Returning default: Server_name={server_name}, ip_address={ip_address}")
+    return {"Server_name": server_name, "ip_address": ip_address}
 
 
 
@@ -145,25 +189,36 @@ def connect_disconnect_server(driver, server_name):
 
         while attempt <= max_attempts:
             try:
-                print("Now in retry mechanism")
-                WebDriverWait(driver, 10).until(
+               # print("Now in retry mechanism")
+                WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((
                         By.XPATH, '//android.view.View[contains(@content-desc,"is not optimized")]'
                     ))
                 )
-                print("Before optimization")
+                #print("Before optimization")
                 server_optimization(driver)
                 disconnect_server(driver)
-                print("After optimization")
+                #print("After optimization")
                 break  # Exit loop if successful
             except TimeoutException as e :
                 #print(f"Attempt {attempt} failed: Element not found or timed out")
                 if attempt == max_attempts:
-                    print("Max retries reached - Server appears to be already optimized")
+                    #print("Max retries reached - Server appears to be already optimized")
                     #Watch the YouTube video
                     #watch_youtube(driver)
                     # Now going for the Server disconnect
-                    print("Time to Disconnect the optimized server")
+                    #print("Go to third party app to check the IP")
+                    # Fetch IP Address from IP Info App
+                    try:
+                        #print("Going for the ip address validation")
+                        validate_ip(driver)
+
+                    except Exception as e:
+                        print(f"❌ {server_name} - Failed to fetch IP: {e}")
+                        #write_ip_to_csv(server_name, "N/A", "N/A", "❌ Server down", "✅ Connected")
+
+                    switch_back_enova(driver)
+                    #print("Time to Disconnect the optimized server")
                     disconnect_server(driver)
                     close_connection_reprot_popup(driver)
                     return
@@ -178,8 +233,85 @@ def connect_disconnect_server(driver, server_name):
         return
 
 
+def validate_ip(driver):
+    """Validate the IP address from VPN app against a third-party IP checker app."""
+    server_info = homepage_info(driver)
+    server_name = server_info.get("Server_name", "")
+    ip_address = server_info.get("ip_address", "")
+
+    if not server_name or not ip_address:
+        print("❌ Failed to retrieve server name or IP address from VPN app")
+        return
+
+    print(f"Server name: {server_name}")
+    print(f"Server IP: {ip_address}")
+
+    external_ip = get_ip_from_app(driver)
+    try:
+        if external_ip is None:
+            print("❌ No external IP retrieved from third-party app")
+            return
+
+        if ip_address == external_ip:
+            print(f"✅{ip_address} == {external_ip}, IP matched")
+        else:
+            print(f"❌{ip_address} != {external_ip}, IP mismatch")
+    except Exception as e:
+        print(f"❌ Failed to validate IP: {e}")
+    return
+
+
+#Third Party app to check the ip
+def get_ip_from_app(driver):
+    """ Fetches the public IP using the IP Info App """
+    app_package = "cz.webprovider.whatismyipaddress"
+    app_activity = "cz.webprovider.whatismyipaddress.MainActivity"
+
+    # Open IP Info App
+    driver.execute_script("mobile: shell", {"command": f"am start -n {app_package}/{app_activity}"})
+    time.sleep(5)
+
+    try:
+        refresh_button = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.ID, "cz.webprovider.whatismyipaddress:id/refresh_info"))
+        )
+        refresh_button.click()
+        time.sleep(5)
+
+        ip_element = WebDriverWait(driver,5).until(
+            EC.presence_of_element_located((By.ID, "cz.webprovider.whatismyipaddress:id/zobraz_ip"))
+        )
+        print("Ip from the My Ip app : ", ip_element.text.strip())
+        return ip_element.text.strip()
+
+    except TimeoutException:
+        print("❌ IP fetch timed out.")
+        return None
+
+    except NoSuchElementException as e:
+        print(f"❌ IP element not found: {e}")
+        return None
+
+    finally:
+        driver.execute_script("mobile: shell", {"command": "input keyevent KEYCODE_HOME"})
+        print("📱 Returned to home screen.")
+
+#Switch back to Enova vpn application
+
+def switch_back_enova(driver):
+
+    # Switch back to Enova VPN
+    try:
+        driver.execute_script("mobile: shell", {"command": "am start -n com.enovavpn.mobile/com.enovavpn.mobile.MainActivity"})
+        time.sleep(2)
+    except Exception as e:
+        #print(f"❌ {server_name} - Failed to reopen Enova VPN: {e}")
+        return
+
+
+
 def disconnect_server(driver):
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver,5)
     # Disconnect the VPN
     try:
         turn_on_button = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, "Connected")]/android.widget.ImageView[3]')))
@@ -188,7 +320,7 @@ def disconnect_server(driver):
         disconnect_button.click()
         time.sleep(3)
         #print(f"🔌 {server_name} disconnected successfully.")
-        print("Disconnected successfully")
+       # print("Disconnected successfully")
         connection_report(driver)
         return
     except Exception as e:
@@ -199,7 +331,7 @@ def disconnect_server(driver):
 
 
 def connection_report(driver) :
-    wait=WebDriverWait(driver,30)
+    wait=WebDriverWait(driver,5)
     # Define labels
     labels = [
         "Server Name",
@@ -231,18 +363,52 @@ def connection_report(driver) :
 
     return
 
+#From the home page after connection collects the server name , ip and other information
+def homepage_info(driver):
+    wait = WebDriverWait(driver, 5)
+    server_name = ''
+    ip_address = ''
+    try:
+        get_serverinfo = wait.until(EC.presence_of_all_elements_located(
+            (By.XPATH, f'//android.view.View[contains(@content-desc,"Connected")]')
+        ))
+
+        for elem in get_serverinfo:
+            content_desc = elem.get_attribute("content-desc")
+            if content_desc:
+                lines = content_desc.split("\n")
+                if len(lines) >= 7:
+                    server_name = lines[1]
+                    ip_address = lines[2]
+                    downloaded = lines[4]
+                    uploaded = lines[6]
+                    #print(f"Server Name: {server_name}")
+                    #print(f"IP Address: {ip_address}")
+                    #print(f"Downloaded: {downloaded}")
+                    #print(f"Uploaded: {uploaded}")
+
+
+
+                    #print("---")  # Separator for multiple entries
+
+        return {"Server_name": server_name, "ip_address": ip_address}
+    except Exception as e:
+        print("Failed to gather information from the home page")
+
+    return
+
 
 def server_optimization(driver):
     """ Handle server optimization popup """
-    print("Now in the server optimization Function")
-    wait = WebDriverWait(driver, 30)
+    #print("Now in the server optimization Function")
+    wait = WebDriverWait(driver, 5)
 
     optimization_msg = wait.until(EC.presence_of_element_located((
         By.XPATH, '//android.view.View[contains(@content-desc,"is not optimized")]'
     )))
 
-    print("Now in the server optimization Function")
-    wait = WebDriverWait(driver, 30)
+    #print("Now in the server optimization Function")
+    wait = WebDriverWait(driver, 5)
 
     full_text = optimization_msg.get_attribute("content-desc")
     print("Full text:", full_text)
@@ -265,7 +431,7 @@ def server_optimization(driver):
 
 
 def close_connection_reprot_popup(driver):
-    wait=WebDriverWait(driver,50)
+    wait=WebDriverWait(driver,5)
     try:
         get_popup = wait.until(EC.presence_of_element_located((
             By.XPATH, '//android.widget.ImageView[1]'

@@ -117,6 +117,8 @@ server_info=[]
 def homepage_info(driver) :
 
      wait = WebDriverWait(driver,30)
+     server_name = ''
+     ip_address = ''
      try :
         get_serverinfo=wait.until(EC.presence_of_all_elements_located(
             (By.XPATH,f'//android.view.View[contains(@content-desc,"Connected")]')
@@ -142,7 +144,7 @@ def homepage_info(driver) :
 
                     print("---")  # Separator for multiple entries
 
-        return
+        return{"Server_name" : server_name,"ip_address": ip_address}
      except Exception as e :
          print("Failed to gather information from the home page")
 

@@ -394,61 +394,61 @@ def connect_disconnect_server(driver,server_name):
        # write_ip_to_csv(server_name, "N/A", "N/A", "❌ Not Applicable", "❌ Connection Failed") #added
         return
 
-    # # Fetch IP Address from IP Info App
-    # try:
-    #     ip_address = get_ip_from_app(driver)
-    # except Exception as e:
-    #     print(f"❌ {server_name} - Failed to fetch IP: {e}")
-    #     write_ip_to_csv(server_name, "N/A", "N/A", "❌ Server down", "✅ Connected")
-    #
-    #     return
-    #
-    # # Switch back to Enova VPN
-    # try:
-    #     driver.execute_script("mobile: shell", {"command": "am start -n com.enovavpn.mobile/com.enovavpn.mobile.MainActivity"})
-    #     time.sleep(2)
-    # except Exception as e:
-    #     print(f"❌ {server_name} - Failed to reopen Enova VPN: {e}")
-    #     return
-    #
-    # # Disconnect the VPN
-    # try:
-    #     turn_on_button = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, "Connected")]/android.widget.ImageView[3]')))
-    #     turn_on_button.click()
-    #     disconnect_button = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[@content-desc="DISCONNECT"]')))
-    #     disconnect_button.click()
-    #     time.sleep(3)
-    #     print(f"🔌 {server_name} disconnected successfully.")
-    # except Exception as e:
-    #     write_ip_to_csv(server_name, "N/A", "N/A", "N/A", "❌ Server can not be connected")
-    #     print(f"❌ {server_name} - Disconnection failed: {e}")
-    #     return
-    #
-    # # Validate IP
-    # try:
-    #     ip_element = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, ".")]')))
-    #     content_desc = ip_element.get_attribute("content-desc")
-    #     match = re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', content_desc)
-    #
-    #     if match:
-    #         extracted_ip = match.group()
-    #         print(f"Extracted IP Address for {server_name}: {extracted_ip}")
-    #         if extracted_ip == ip_address:
-    #             print("✅ IP Matched")
-    #         else:
-    #             print("❌ IP Does Not Match")
-    #             write_ip_to_csv(server_name, extracted_ip, ip_address, "❌ IP Not Matched", "✅ Connected")
-    #
-    #
-    #
-    #     else:
-    #         print(f"No IP Address found for {server_name}")
-    # except Exception as e:
-    #     print(f"⚠️ Error extracting IP for {server_name}: {e}")
-    #     write_ip_to_csv(server_name, "N/A", ip_address or "N/A", "❌ Error Extracting IP", "✅ Connected")
-    #
-    #     return
-    #
+    # Fetch IP Address from IP Info App
+    try:
+        ip_address = get_ip_from_app(driver)
+    except Exception as e:
+        print(f"❌ {server_name} - Failed to fetch IP: {e}")
+        #write_ip_to_csv(server_name, "N/A", "N/A", "❌ Server down", "✅ Connected")
+
+        return
+
+    # Switch back to Enova VPN
+    try:
+        driver.execute_script("mobile: shell", {"command": "am start -n com.enovavpn.mobile/com.enovavpn.mobile.MainActivity"})
+        time.sleep(2)
+    except Exception as e:
+        print(f"❌ {server_name} - Failed to reopen Enova VPN: {e}")
+        return
+
+    # Disconnect the VPN
+    try:
+        turn_on_button = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, "Connected")]/android.widget.ImageView[3]')))
+        turn_on_button.click()
+        disconnect_button = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[@content-desc="DISCONNECT"]')))
+        disconnect_button.click()
+        time.sleep(3)
+        print(f"🔌 {server_name} disconnected successfully.")
+    except Exception as e:
+        write_ip_to_csv(server_name, "N/A", "N/A", "N/A", "❌ Server can not be connected")
+        print(f"❌ {server_name} - Disconnection failed: {e}")
+        return
+
+    # Validate IP
+    try:
+        ip_element = wait.until(EC.presence_of_element_located((By.XPATH, '//android.view.View[contains(@content-desc, ".")]')))
+        content_desc = ip_element.get_attribute("content-desc")
+        match = re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', content_desc)
+
+        if match:
+            extracted_ip = match.group()
+            print(f"Extracted IP Address for {server_name}: {extracted_ip}")
+            if extracted_ip == ip_address:
+                print("✅ IP Matched")
+            else:
+                print("❌ IP Does Not Match")
+                write_ip_to_csv(server_name, extracted_ip, ip_address, "❌ IP Not Matched", "✅ Connected")
+
+
+
+        else:
+            print(f"No IP Address found for {server_name}")
+    except Exception as e:
+        print(f"⚠️ Error extracting IP for {server_name}: {e}")
+        write_ip_to_csv(server_name, "N/A", ip_address or "N/A", "❌ Error Extracting IP", "✅ Connected")
+
+        return
+
     # # Close the pop-up
     # try:
     #     close_popup = wait.until(EC.presence_of_element_located((By.XPATH, '//android.widget.ImageView[1]')))
